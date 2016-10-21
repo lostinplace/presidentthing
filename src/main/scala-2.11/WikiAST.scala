@@ -36,7 +36,10 @@ object WikiAST {
   case class TemplateInvocation(label: SentenceFragment, values: Option[Seq[Expression]]) extends Expression with NonPrinting
   case class KVPair(key: Word, value: Option[Sentence]) extends Expression with NonPrinting with WikiParserTerm
   case class Parenthetical(content: Sentence) extends Expression with NonPrinting
-  case class Bold(content: Expression) extends Expression with NonPrinting
+  case class Bold(content: Sentence) extends Expression {
+    override def printableContent: Any = content.printableContent
+    override def toString: String = s"BOLD($content)"
+  }
   case class Italic(content: Expression) extends Expression with NonPrinting
   case class BoldItalic(content: Expression) extends Expression with NonPrinting
 

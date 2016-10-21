@@ -94,11 +94,12 @@ object Xml {
     val CData = P( (!"]]>" ~ Char).rep )
     val CDEnd = P( "]]>" )
 
-    val Attribute = P( Name ~ Eq ~ AttValue )
+    val  Attribute = P( Name ~ Eq ~ AttValue )
 
     val AttValue = P(
       "\"" ~ (CharQ | Reference).rep ~ "\"" |
-      "'" ~ (CharA | Reference).rep ~ "'"
+      "'" ~ (CharA | Reference).rep ~ "'" |
+      Name
     )
 
     val Comment = P( "<!--" ~ ((!"-" ~ Char) | ("-" ~ (!"-" ~ Char))).rep ~ "-->" )

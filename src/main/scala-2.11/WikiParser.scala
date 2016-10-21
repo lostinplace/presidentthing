@@ -5,9 +5,11 @@ import scala.util.matching.Regex
 object WikiParser {
   import fastparse.all._
   import WikiAST._
+  import RegexParser._
+  import WikiTokens._
 
   val normalExpression: P[Expression] = P(
-    templateInvocation | parenthetical | break | XML | link | sentenceFragment
+    break | XML | boldContent | templateInvocation | parenthetical | link | sentenceFragment
   )
 
   val newline = P( "\n" | "\r\n" | "\r" | "\f")
@@ -16,34 +18,33 @@ object WikiParser {
 
   val break = P("<br" ~/ wsBlock.? ~ (">" | "/>")) .map(_ => Break())
 
-  val sentence = normalExpression.rep(sep=" "|"") .map { Sentence(_:_*) }
+  val sentence = normalExpression.rep(sep=" ".rep.?) .map { Sentence(_:_*) }
 
   val valueSentence = normalExpression.rep(sep=wsBlock) .map { Sentence(_:_*) }
 
-  val wikiPage = normalExpression.rep(min=1, sep="\n").map { WikiPage( _:_*) }
+  val wikiPage = normalExpression.rep(min=1, sep=wsBlock).map { WikiPage( _:_*) }
 
+  val boldContent = (BOLD_QUOTES ~ sentence ~ BOLD_QUOTES) map { Bold(_) }
 
-
-  val word = TextNot("|{}[]()<>= ").map { Word(_) }
+  val word = R(WikiTokens.patternNotIncludingTokens).map(x=>Word(x.toString))
 
   val sentenceFragment = word.rep(min=1, sep=" ").map { SentenceFragment(_:_*) }
-  val templateInvocation:P[TemplateInvocation] = P("{{" ~/ sentenceFragment ~/ argList.? ~/ "}}").map {
+  val templateInvocation:P[TemplateInvocation] = P(TEMPLATE_START ~/ sentenceFragment ~/ argList.? ~/ TEMPLATE_END).map {
       case (phrase, args) => new TemplateInvocation(phrase, args)
    }
-
 
   val kvPair = word ~ wsBlock.? ~ "=" ~ wsBlock.? ~ valueSentence.? map {
     case (word, Some(sentence)) => KVPair(word, Some(sentence))
     case (word, None) => KVPair(word, None)
   }
 
-  val link = P("[[" ~/ sentence ~/ ("|" ~/ sentence).? ~/ "]]").map {
+  val link = P(LINK_START ~/ sentence ~/ (ARG_SEPARATOR ~/ sentence).? ~/ LINK_END ).map {
     case (phrase, label:Option[sentence]) => Link(phrase, label)
   }
 
   val arg = kvPair | sentence
-  val args =  arg.rep(min=1, sep=wsBlock.? ~ "|" ~/ wsBlock.? ~ Pass)
-  val argList = P(wsBlock.? ~ "|" ~/ wsBlock.? ~/ args ~ wsBlock.?)
+  val args =  arg.rep(min=1, sep=wsBlock.? ~ ARG_SEPARATOR ~/ wsBlock.? ~ Pass)
+  val argList = P(wsBlock.? ~ ARG_SEPARATOR ~/ wsBlock.? ~/ args ~ wsBlock.?)
 
   val parenthetical = P("(" ~/ wsBlock.? ~ sentence ~/ wsBlock.? ~ ")").map {
     case sentence => Parenthetical(sentence)
