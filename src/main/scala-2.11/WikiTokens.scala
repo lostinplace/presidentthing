@@ -16,13 +16,21 @@ object WikiTokens extends Enumeration{
   val PARENS_START = Value("(")
   val PARENS_END = Value(")")
 
-  val EQUALS = Value("=")
+  val HEADING = Value("==")
 
   val SPACE = Value(" ")
+
+  val ITALIC_QUOTES = Value("''")
 
   val BOLD_QUOTES = Value("'''")
 
   val REF_START = Value("<ref")
+
+  val NOWIKI_START = Value("<nowiki")
+
+  val XML_START = Value("<")
+
+  val NEWLINE = Value("\n")
 
   val tokenPattern = CalculateTokenRegex().r
   val negativeTokenPattern = CalculateTokenRegex(true).r
@@ -30,7 +38,7 @@ object WikiTokens extends Enumeration{
 
   private def CalculateTokenRegex(negate:Boolean = false) ={
 
-    val tokenGroups = WikiTokens.values.map { """(\Q%s\E)""".format(_) } mkString("|")
+    val tokenGroups = (WikiTokens.values.map { """(\Q%s\E)""".format(_) } mkString("|")) + """|(&\w+;)"""
     if(negate) s"((?!$tokenGroups).)" else s"([$tokenGroups])"
 
   }

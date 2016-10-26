@@ -4,58 +4,62 @@ import fastparse.core.Parsed.Success
 
 object WikiAST {
 
-  sealed trait Expression extends Any {
-    def printableContent: Any
-  }
+  sealed trait Expression extends Any
 
-  trait NonPrinting extends Expression {
-    override def printableContent = ""
-  }
-
-  trait WikiParserTerm
-
-  case class Sentence(expressions:Expression*) extends Expression with WikiParserTerm {
-    override def printableContent: Any = expressions.foldLeft("") {
-      case (x,y) => x+y.printableContent
-    }
+  case class Chunk(content:Expression*) extends Expression {
+    override def toString = s"Chunk(${content.mkString(" ")})"
   }
 
   case class Word(value: String) extends AnyVal with Expression {
-    override def printableContent: Any = value + " "
+    override def toString: String = value
   }
 
-  case class SentenceFragment(value: Word*) extends Expression {
-    override def printableContent: Any = value.foldLeft("") { (a,b)=> a+b.printableContent }
-    override def toString = s"Phrase(${printableContent.toString})"
+  case class SentenceFragment(content: Word*) extends Expression {
+    override def toString = content.mkString(" ")
   }
 
-  case class Link(resource: Sentence, label: Option[Sentence]) extends Expression {
-    override def printableContent: Any = { if(label.isDefined) label else resource }
+  case class Link(content: Expression*) extends Expression {
+
+    def label() ={
+      if(content.length>1) content(1) else content(0)
+    }
+
+    override def toString = s"Link(${content.mkString(",")})"
   }
 
-  case class TemplateInvocation(label: SentenceFragment, values: Option[Seq[Expression]]) extends Expression with NonPrinting
-  case class KVPair(key: Word, value: Option[Sentence]) extends Expression with NonPrinting with WikiParserTerm
-  case class Parenthetical(content: Sentence) extends Expression with NonPrinting
-  case class Bold(content: Sentence) extends Expression {
-    override def printableContent: Any = content.printableContent
-    override def toString: String = s"BOLD($content)"
+  case class Heading(content: Chunk, level: Int) extends Expression {
+
+    override def toString: String = s"Heading$level($content)"
   }
-  case class Italic(content: Expression) extends Expression with NonPrinting
-  case class BoldItalic(content: Expression) extends Expression with NonPrinting
+
+
+  case class TemplateInvocation(content: Expression*) extends Expression {
+    override def toString = s"TemplateInvocation(${content.mkString(",")})"
+  }
+
+  case class KVPair(key: Word, value: Option[Seq[Chunk]]) extends Expression{
+    override def toString = {
+      val content = value.getOrElse(List())
+      s"KVPair($key=${content.mkString(",")})"
+    }
+  }
+  case class Parenthetical(content: Expression) extends Expression
+  case class Bold(content: Expression) extends Expression
+  case class Italic(content: Expression) extends Expression
+  case class BoldItalic(content: Expression) extends Expression
+  case class ListBullet(content: Expression) extends Expression
+  case class WikiList(content: ListBullet*) extends Expression {
+    override def toString: String = s"WikiList(${content.mkString(",")})"
+  }
 
   case class WikiPage(content: Expression*) {
-    def printableContent: Any = content.foldLeft("") { (a,b)=> s"$a ${b.printableContent}" }
+
+    override def toString = s"WikiPage(${content.mkString("\n")})"
   }
-
-
 
   case class WikiXML(content: Any) extends Expression {
-    override def printableContent: Any = "XML"
   }
 
-
-
   case class Break() extends Expression {
-    override def printableContent: Any = "\n"
   }
 }

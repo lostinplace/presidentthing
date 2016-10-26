@@ -79,13 +79,13 @@ object Xml {
 
 
     val TagHeader = P( "<" ~ Name ~ (WL ~ Attribute).rep ~ WL.? )
-    val Element = P( TagHeader ~ (EmptyElemTagEnd | STagEnd ~ Content ~ ETag ) )
+    val Element = P( TagHeader ~ (EmptyElemTagEnd | STagEnd ~/ Content ~/ ETag ) ).opaque("shittyxml")
 
     val EmptyElemTagEnd = P( "/>" )
 
     val STagEnd = P( ">" )
     val ETag = P( "</" ~ Name ~ WL.? ~ ">" )
-    val Content = P( (CharData | Content1).rep )
+    val Content = P( (CharData | "<br>" | Content1 ).rep )
     val Content1  = P( XmlContent | Reference )
     val XmlContent: P0 = P( Element | CDSect | PI | Comment )
 
@@ -111,9 +111,10 @@ object Xml {
     val EntityRef = P( "&" ~ Name ~ ";" )
 
     val Char = P( AnyChar )
-    val CharData = P( (!("{" | "]]>" | CharRef) ~ Char1 | "{{").rep(1) )
+    val CharData = P( (!("]]>" | CharRef) ~ Char2 ).rep(1) )
 
     val Char1  = P( !("<" | "&") ~ Char )
+    val Char2  = P( !("<") ~ Char )
     val CharQ = P( !"\"" ~ Char1 )
     val CharA = P( !"'" ~ Char1 )
     val CharB = P( !"{" ~ Char1 )
