@@ -2,24 +2,24 @@ package wikiparser
 
 import fastparse.core.Parsed.{Failure, Success}
 import WikiParser._
-import fastparse.core.Parsed
+import fastparse.all._
+import fastparse.core.{Parsed, Parser}
 import fastparse.parsers.Combinators.Not
 
 import scala.io.Source
 import org.scalatest.{FlatSpec, Matchers}
-
 import wikiparser.WikiAST._
 
 class WikiParseTest extends FlatSpec with Matchers {
 
   "parser" should "correctly parse a word" in {
-    val Success(aWord,_) = word.parse("testing")
+    val Success(aWord,_) = rigidWord.parse("testing")
     aWord should be(Word("testing"))
-    val Success(aWord2,_) = word.parse("test{ing")
+    val Success(aWord2,_) = rigidWord.parse("test{ing")
     aWord2 should be(Word("test{ing"))
-    val Success(aWord3,_) = word.parse("test]ing")
+    val Success(aWord3,_) = rigidWord.parse("test]ing")
     aWord3 should be(Word("test]ing"))
-    val Success(aWord4,_) = word.parse("test]]ing")
+    val Success(aWord4,_) = rigidWord.parse("test]]ing")
     aWord4 should be(Word("test"))
 
   }
@@ -237,6 +237,68 @@ class WikiParseTest extends FlatSpec with Matchers {
     println(result)
   }
 
+  it should "parse this xml chunk (ampersand in xml)" in {
+    val test="""<ref name="John & Abigail Adams">ble</ref>"""
+    WikiParseTest.verifySuccessfulParse(Xml.Xml.Element, test)
+  }
+
+  it should "parse this as page (ampersand in xml)" in {
+    val test =
+      """===Accusations of monarchism===
+        |<ref>McCullough, p. 410.</ref> being a Monarchist.<ref name="John & Abigail Adams">ble</ref>""".stripMargin
+    WikiParseTest.verifySuccessfulParse(wikiPage, test)
+  }
+
+  it should "parse broken kvpairs" in {
+    import fastparse.all._
+
+    val test = """test=
+                 |{{s-start}}
+                 |
+                 |{{s-new|rows=2|constituency}}
+                 |""".stripMargin
+    WikiParseTest.verifySuccessfulParse(kvPair, test)
+  }
+
+  it should "parse this nonsense" in {
+    val test =
+      """{| class="toccolours" style="float: right; margin-left: 1em; margin-right: 2em; font-size: 85%; background:#c6dbf7; color:black; width:30em; max-width: 40%;" cellspacing="5"
+        || style="text-align: left;" |"I suppose that right and justice should determine the path to be followed in treating this subject. If national honesty is to be disregarded and a desire for territorial expansion or dissatisfaction with a form of government not our own ought to regulate our conduct, I have entirely misapprehended the mission and character of our government and the behavior which the conscience of the people demands of their public servants."
+        ||-
+        || style="text-align: right;" | '''''Cleveland's message to Congress on the Hawaiian question,''' December 18, 1893''.<ref name=nevins560>Nevins, 560</ref>
+        ||}""".stripMargin
+    WikiParseTest.verifySuccessfulParse(wikiPage, test)
+  }
+
+  it should "parse terrible xmlnames" in {
+    import fastparse.all._
+    val test =""""background-color:Khaki"""
+    WikiParseTest.verifySuccessfulParse(Xml.Xml.AttValue, test)
+  }
+
+  it should "parse terrible xml" in {
+    val test ="""<div style="background-color:Khaki> George Washington</div>"""
+    WikiParseTest.verifySuccessfulParse(XML, test)
+  }
+
+  it should "parse absurd bad XML" in {
+    val test = """<ref name=GLBC&Y>{{cite </ref>"""
+    WikiParseTest.verifySuccessfulParse(XML, test)
+  }
+
+  it should "parse this weird lnk" in {
+    import fastparse.all._
+    val test = """File:George W Bush approval ratings.svg|thumb|right|{{legend|#4A7EBB|approve}}
+       |{{legend|#BE4B48|disapprove}}
+       |[[Gallup poll|Gallup]]/''[[USA Today]]'' Bush public opinion polling from February 2001 to January 2009.""".stripMargin
+    WikiParseTest.verifySuccessfulParse(P(linkArgs~End), test)
+  }
+
+  it should "parse embedded bold in italics" in {
+    val test = """''Now it's '''my''' time!''"""
+    WikiParseTest.verifySuccessfulParse(P(italicContent~End), test)
+  }
+
   it should "parse this stuff" in {
     val test = """Washington's height was variously recorded as {{convert|6|ft|m|2|abbr=on}} to {{convert|6|ft|2|in|m|2|abbr=on}},<ref name=UVA.FAQ>{{cite web |title=George Washington, 1732–1799 |date=n.d. |accessdate=May 4, 2015 |website=The Papers of George Washington |url=http://gwpapers.virginia.edu/history/faq/washington/ |publisher=University of Virginia |archiveurl=https://web.archive.org/web/20150330170851/http://gwpapers.virginia.edu/history/faq/washington/ |archivedate=March 30, 2015 |deadurl=no}}</ref> and he had unusually great physical strength that amazed younger men. Jefferson called Washington "the best horseman of his age", and both American and European observers praised his riding; the horsemanship benefited his hunting, a favorite hobby. Washington was an excellent dancer and frequently attended the theater, often referencing Shakespeare in letters.<ref>{{harvnb|Chernow|2010|pp=172–176}}</ref> He drank in moderation and precisely recorded gambling wins and losses, but Washington disliked the excessive drinking, gambling, smoking, and profanity that was common in colonial Virginia. Although he grew tobacco, he eventually stopped smoking, and considered drunkenness a man's worst vice; Washington was glad that post-Revolutionary Virginia society was less likely to "force [guests] to drink and to make it an honor to send them home drunk."<ref>{{harvnb|Chernow|2010|pp=187–189}}</ref>
                  |
@@ -270,84 +332,122 @@ class WikiParseTest extends FlatSpec with Matchers {
                  |* [https://jeffersonpapers.princeton.edu/ ''The Papers of Thomas Jefferson, '' --the Princeton University Press edition of the correspondence and papers; vol 1 appeared in 1950; vol 41 (covering part of 1803) appeared in 2014.]
                  |* {{cite web |url=http://press-pubs.uchicago.edu/founders/documents/v1ch8s41.html|ref=UCP |title=Thomas Jefferson, Resolutions Relative to the Alien and Sedition Acts |last=Jefferson|first=Thomas|date=November 10, 1798 |work=The Founder's Constitution |publisher=University of Chicago Press |accessdate=November 2, 2015 }}
                  |
+                 |===Accusations of monarchism===
+                 |Throughout his lifetime Adams expressed controversial and shifting views regarding the virtues of monarchical and hereditary political institutions.<ref name="Mark O. Hatfield, Vice Pres">{{cite web|first=Mark O.|last=Hatfield|year=1997|url=http://www.senate.gov/artandhistory/history/resources/pdf/john_adams.pdf|title=Vice Presidents of the United States|publisher=U.S. Government Printing Office|pages=3–11}}</ref> At times he conveyed substantial support for these approaches,<ref name="Old Family Letters">{{cite book|first=Alexander, ed.|last=Biddle|title=Old Family Letters|url=https://books.google.com/books?id=5d8hAAAAMAAJ&pg=PA38|year=1892|publisher=Press of J.B. Lippincott Company|pages=38ff}}</ref> suggesting for example that "hereditary monarchy or aristocracy" are the "only institutions that can possibly preserve the laws and liberties of the people."<ref name = "Old Family Letters" /> Yet at other times he distanced himself from such ideas, calling himself "a mortal and irreconcilable enemy to Monarchy" and "no friend to hereditary limited monarchy in America."<ref>McCullough, p. 410.</ref> Such denials did not assuage his critics, and Adams was often accused of being a Monarchist.<ref name="John & Abigail Adams">{{cite web|url=http://www.pbs.org/wgbh/amex/adams/peopleevents/p_callender.html|title=John & Abigail Adams|publisher=PBS online|accessdate=July 17, 2013}}</ref>
                  |
+                 |{{Navboxes
+                 ||title=Offices and distinctions
+                 ||list1=
+                 |{{s-start}}
+                 |{{s-par|us-hs}}
+                 |{{s-new|rows=2|constituency}}
+                 |{{s-aft|after=[[George Hancock (Virginia)|George Hancock]]}}
+                 |
+                 |{{s-aft|after=[[John Dawson (U.S. politician)|John Dawson]]}}
+                 |}}
+                 |{{further|Venezuela Crisis of 1895}}
+                 |{| class="toccolours" style="float: right; margin-left: 1em; margin-right: 2em; font-size: 85%; background:#c6dbf7; color:black; width:30em; max-width: 40%;" cellspacing="5"
+                 || style="text-align: left;" |"I suppose that right and justice should determine the path to be followed in treating this subject. If national honesty is to be disregarded and a desire for territorial expansion or dissatisfaction with a form of government not our own ought to regulate our conduct, I have entirely misapprehended the mission and character of our government and the behavior which the conscience of the people demands of their public servants."
+                 ||-
+                 || style="text-align: right;" | '''''Cleveland's message to Congress on the Hawaiian question,''' December 18, 1893''.<ref name=nevins560>Nevins, 560</ref>
+                 ||}
+                 |{{bleh
+                 || name          = <div style="background-color:Khaki> George Washington</div>}}
+                 |Polk left Washington on March 6, 1849, never to return.<ref name>Merry, pg. 470</ref>
+                 |Jackson was a Freemason, having been initiated at Harmony Lodge No. 1 in Tennessee; he also participated in chartering several other lodges in Tennessee. He was the only U.S. president to have served as Grand Master of a state's Grand Lodge until [[Harry S. Truman]] in 1945. His Masonic apron is on display in the [[Tennessee State Museum]]. An obelisk and bronze Masonic plaque decorate his tomb at The Hermitage.<ref name="Tennessee State History">{{cite web|last=Jackson|first=Andrew|title=Tennessee History|url=http://www.tennesseehistory.com/class/Jackson.htm|work=Masonic Research|publisher=tennesseehistory.com|accessdate=July 29, 2012}}</ref><ref name=GLBC&Y>{{cite web|url=http://freemasonry.bcy.ca/textfiles/famous.html |title= Grand Lodge of British Columbia & Yukon's "A few famous freemasons" page |author=Trevor W. McKeown|publisher=freemasonry.bcy.ca|accessdate=September 14, 2015}}</ref><ref>{{cite web| title=Masonic Presidents, Andrew Jackson| url=http://www.pagrandlodge.org/mlam/presidents/jackson.html| accessdate= July 28, 2012}}</ref>
+                 |{{s-ttl|title=Persons who have [[Lying in state|lain in state or honor]]<br>in the [[United States Capitol rotunda]]|years=1923}}
+                 |African Americans made claims of kinship.<ref name = "first black president" /> This issue was
+                 |[[File:George W Bush approval ratings.svg|thumb|right|{{legend|#4A7EBB|approve}}
+                 |{{legend|#BE4B48|disapprove}}
+                 |{{legend|#98B954|unsure}}
+                 |[[Gallup poll|Gallup]]/''[[USA Today]]'' Bush public opinion polling from February 2001 to January 2009.]]
                  |""".stripMargin
 
-    val Success(result, _) =wikiPage.parse(test)
-
-    println(result)
+    val result = WikiParseTest.verifySuccessfulParse(wikiPage, test)
 
     result should not be("")
 
   }
 
-
-  "full document ingestion" should "parse preamble for George washington" in {
-    val counts = List(672)
-    var memo:WikiPage = null
-
-    for( count <- counts) {
-      val lines = WikiParseTest.gwSourceLines(count)
-
-      val out = wikiPage.parse(lines)
-      out match {
-        case Success(result, _) => {
-          memo = result
-          result should not be null
-          println(result)
-        }
-        case x => {
-          val out = WikiParseTest.getFailureString(x)
-          println(out)
-          out should be("")
-        }
-      }
-
-    }
-  }
-
-  it should "parse preamble for jefferson" in {
-    val counts = List(795)
-    var memo:WikiPage = null
-
-    for( count <- counts) {
-      val lines = WikiParseTest.gwSourceLines(count, "jefferson")
-
-      val out = wikiPage.parse(lines)
-      out match {
-        case Success(result, _) => {
-          memo = result
-          result should not be null
-          println(result)
-        }
-        case x => {
-          val out = WikiParseTest.getFailureString(x)
-          println(out)
-          out should be("")
-        }
-      }
-    }
-
+  "full document ingestion" should "parse washington" in {
+    val memo = WikiParseTest.parseFile("washington")
     println(memo)
-
   }
 
-  "flatmap test" should "do a thing" in {
-    import fastparse.all._
-    val t = Option("test")
-    val p = P( (!("{" | "]]>")).rep(1) ~ End )
-    val p2 = Not("test").rep(min=1).!
-//    val Success(result,_) = p2.parse("derp")
-    val p3 = !StringIn("tes","blerp")
-//    val p4 = StringNotIn("tes","blerp")
 
-    val Success(result,_) = p3.parse("abctes{")
-    println(result)
+  it should "do these dudes" in {
+    val dudeList = List(
+      "washington",
+      "jefferson",
+      "adams",
+      "obama",
+      "fdroosevelt",
+      "hhoover",
+      "gwbib",
+      "jqadams",
+      "dquayle",
+      "polk",
+      "jackson",
+      "nrockefeller",
+      "vburen",
+      "reagan",
+      "nixon",
+      "harding",
+      "wharrison",
+      "taft",
+      "gwbush",
+      "johnson"
+    )
 
+    var memo:java.io.Serializable = null
+    for (dude <- dudeList) {
+      try {
+        memo = WikiParseTest.parseFile(dude)
+        memo match {
+          case x:String => println(x)
+          case x:WikiPage => true should be(true)
+        }
+
+      } catch {
+        case x:Throwable => {
+          println(x)
+          throw x
+        }
+      }
+    }
+    println(memo)
+    memo.isInstanceOf[String] should not be true
   }
+
+
+//  it should "test harding's bullshit" in {
+//    val test = WikiParseTest.gwSourceLines(565, "harding")
+//    WikiParseTest.verifySuccessfulParse(wikiPage, test)
+//  }
 }
 
 object WikiParseTest {
+
+  def parseFile(fileName:String, length:Option[Int]=None) = {
+
+    var memo:WikiPage = null
+    var data = ResourceInterface.SourceLines(fileName)
+
+    if(!length.isEmpty) {
+      data=data.split("\n").take(length.get).mkString("\n")
+    }
+
+    val out = wikiPage.parse(data)
+    out match {
+      case Success(result, _) => {
+        result
+      }
+      case x => {
+        WikiParseTest.getFailureString(x)
+      }
+    }
+  }
+
   def getFailureString[T](result: Parsed[T, _, _]) = {
     val tmp = result.asInstanceOf[Parsed.Failure[WikiPage,_]]
     val full = tmp.extra.input
@@ -368,5 +468,11 @@ object WikiParseTest {
   def gwSourceLines(lineCount:Int = 1, resource:String ="georgewashington") = {
     val gwSource = Source.fromURL(gwResourceURL(resource))
     try gwSource.getLines.take(lineCount).mkString("\n") finally gwSource.close
+  }
+
+  def verifySuccessfulParse[T,A](parser:Parser[T,A,String], text:String) = {
+    val Success(result,_) = parser.parse(text)
+    println(result)
+    result
   }
 }

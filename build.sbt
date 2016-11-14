@@ -17,7 +17,11 @@ libraryDependencies ++= Seq(
   "org.scalacheck" %% "scalacheck" % "1.13.0" % "test",
   "com.lihaoyi" %% "fastparse" % "0.4.1",
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-  "com.lihaoyi" %% "acyclic" % "0.1.4" % "provided"
+  "com.lihaoyi" %% "acyclic" % "0.1.4" % "provided",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.8.4",
+  "org.json4s" % "json4s-native_2.11" % "3.4.2",
+  "org.json4s" % "json4s-jackson_2.11" % "3.4.2"
+
 )
 
 

@@ -6,6 +6,10 @@ object WikiAST {
 
   sealed trait Expression extends Any
 
+  trait SimpleFormatted {
+    def content:Expression
+  }
+
   case class Chunk(content:Expression*) extends Expression {
     override def toString = s"Chunk(${content.mkString(" ")})"
   }
@@ -18,7 +22,7 @@ object WikiAST {
     override def toString = content.mkString(" ")
   }
 
-  case class Link(content: Expression*) extends Expression {
+  case class Link(linkType: String, content: Expression*) extends Expression {
 
     def label() ={
       if(content.length>1) content(1) else content(0)
@@ -37,16 +41,16 @@ object WikiAST {
     override def toString = s"TemplateInvocation(${content.mkString(",")})"
   }
 
-  case class KVPair(key: Word, value: Option[Seq[Chunk]]) extends Expression{
+  case class KVPair(key: Word, value: Option[Seq[Expression]]) extends Expression{
     override def toString = {
       val content = value.getOrElse(List())
       s"KVPair($key=${content.mkString(",")})"
     }
   }
   case class Parenthetical(content: Expression) extends Expression
-  case class Bold(content: Expression) extends Expression
-  case class Italic(content: Expression) extends Expression
-  case class BoldItalic(content: Expression) extends Expression
+  case class Bold(content: Expression) extends Expression with SimpleFormatted
+  case class Italic(content: Expression) extends Expression with SimpleFormatted
+  case class BoldItalic(content: Expression) extends Expression with SimpleFormatted
   case class ListBullet(content: Expression) extends Expression
   case class WikiList(content: ListBullet*) extends Expression {
     override def toString: String = s"WikiList(${content.mkString(",")})"

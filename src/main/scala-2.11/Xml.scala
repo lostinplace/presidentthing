@@ -79,7 +79,8 @@ object Xml {
 
 
     val TagHeader = P( "<" ~ Name ~ (WL ~ Attribute).rep ~ WL.? )
-    val Element = P( TagHeader ~ (EmptyElemTagEnd | STagEnd ~/ Content ~/ ETag ) ).opaque("shittyxml")
+    val openTag = P( TagHeader ~ (EmptyElemTagEnd | STagEnd) )
+    val Element = P( TagHeader ~ (EmptyElemTagEnd | STagEnd ~ Content ~ ETag ) )
 
     val EmptyElemTagEnd = P( "/>" )
 
@@ -94,12 +95,13 @@ object Xml {
     val CData = P( (!"]]>" ~ Char).rep )
     val CDEnd = P( "]]>" )
 
-    val  Attribute = P( Name ~ Eq ~ AttValue )
+    val  Attribute = P( Name ~ Eq.? ~ AttValue.? )
 
     val AttValue = P(
-      "\"" ~ (CharQ | Reference).rep ~ "\"" |
-      "'" ~ (CharA | Reference).rep ~ "'" |
-      Name
+      "\"" ~ (CharQ | Reference | "&").rep ~ "\"" |
+      "'" ~ (CharA | Reference | "&").rep ~ "'" |
+        "\"".? ~ Name
+
     )
 
     val Comment = P( "<!--" ~ ((!"-" ~ Char) | ("-" ~ (!"-" ~ Char))).rep ~ "-->" )
@@ -118,8 +120,8 @@ object Xml {
     val CharQ = P( !"\"" ~ Char1 )
     val CharA = P( !"'" ~ Char1 )
     val CharB = P( !"{" ~ Char1 )
-    val Name = P( XNameStart ~ NameChar.rep )
-    val XNameStart  = P( "_" | BaseChar | Ideographic )
+    val Name = P( XNameStart ~ (NameChar |"&"|";").rep )
+    val XNameStart  = P( "_" | BaseChar | NameChar | Ideographic )
 
     val NameStartChar = P(CharIn(
       ":", 'A' to 'Z', "_", 'a' to 'z', '\u00C0' to '\u00D6', '\u00D8' to '\u00F6',

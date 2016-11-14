@@ -7,29 +7,20 @@ object WikiTokens extends Enumeration{
 
   val TEMPLATE_START = Value("{{")
   val TEMPLATE_END = Value("}}")
-
   val LINK_START = Value("[[")
   val LINK_END = Value("]]")
-
   val ARG_SEPARATOR = Value("|")
-
   val PARENS_START = Value("(")
   val PARENS_END = Value(")")
-
   val HEADING = Value("==")
-
   val SPACE = Value(" ")
-
   val ITALIC_QUOTES = Value("''")
-
   val BOLD_QUOTES = Value("'''")
-
   val REF_START = Value("<ref")
-
   val NOWIKI_START = Value("<nowiki")
-
   val XML_START = Value("<")
-
+  val SCRIPT_TEMPLATE_START = Value("{|")
+  val SCRIPT_TEMPLATE_END = Value("|}")
   val NEWLINE = Value("\n")
 
   val tokenPattern = CalculateTokenRegex().r
