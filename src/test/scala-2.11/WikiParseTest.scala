@@ -361,6 +361,8 @@ class WikiParseTest extends FlatSpec with Matchers {
                  |{{legend|#BE4B48|disapprove}}
                  |{{legend|#98B954|unsure}}
                  |[[Gallup poll|Gallup]]/''[[USA Today]]'' Bush public opinion polling from February 2001 to January 2009.]]
+                 |
+                 |November 16, 2016. <http://www.nbc.com/saturday-night-live/episode-guide/season-41/donald-trump-with-sia/1687> bleh
                  |""".stripMargin
 
     val result = WikiParseTest.verifySuccessfulParse(wikiPage, test)
@@ -371,6 +373,11 @@ class WikiParseTest extends FlatSpec with Matchers {
 
   "full document ingestion" should "parse washington" in {
     val memo = WikiParseTest.parseFile("washington")
+    println(memo)
+  }
+
+  "full document ingestion" should "parse trump" in {
+    val memo = WikiParseTest.parseFile("trump")
     println(memo)
   }
 
@@ -396,7 +403,8 @@ class WikiParseTest extends FlatSpec with Matchers {
       "wharrison",
       "taft",
       "gwbush",
-      "johnson"
+      "johnson",
+      "trump"
     )
 
     var memo:java.io.Serializable = null

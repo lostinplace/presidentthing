@@ -23,9 +23,21 @@ class ExtractorTest extends FlatSpec with Matchers {
   }
 
   it should "write my files" in {
-    val dir = new File("/output/presidents/")
+    val dir = new File("/output/presfiles/")
     val out = PresidentContentExtractor.getOutFilesFromXMLFolder(dir)
-    PresidentContentExtractor.writeContentFiles("/output/presfiles", out:_*)
+    PresidentContentExtractor.writeContentFiles("/output/contentfiles", out:_*)
+  }
+
+  it should "write john adams" in {
+    val dir = new File("/output/presfiles/scratch")
+    val out = PresidentContentExtractor.getOutFilesFromXMLFolder(dir)
+    PresidentContentExtractor.writeContentFiles("/tmp/scratchout", out:_*)
+  }
+
+  it should "get trump" in {
+    val file = new File("/output/presqueries/djtrump.xml")
+    val out = PresidentContentExtractor.getOutputFileFromXmlQueryFile(file)
+    PresidentContentExtractor.writeContentFiles("/tmp/scratchout", out)
   }
 
 }

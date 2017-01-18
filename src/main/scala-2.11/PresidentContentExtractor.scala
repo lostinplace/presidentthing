@@ -57,7 +57,11 @@ object PresidentContentExtractor {
       line match {
         case "" =>
         case sectionPattern(x) => {
-          outSections = outSections :+ Section(currentSection.title, currentSection.start, counter-1)
+          val tmp = Section(currentSection.title, currentSection.start, counter-1)
+          if (tmp.stop>=tmp.start) {
+            outSections = outSections :+ tmp
+          }
+
           currentSection = Section(x, counter, -1)
         }
         case x => {
@@ -68,6 +72,15 @@ object PresidentContentExtractor {
     }
     (output, outSections)
   }
+
+  def getOutputFileFromXmlQueryFile(file: File) = {
+    val xml = XML.loadFile(file.getAbsolutePath)
+    val title:String = (xml \\ "api" \\ "query" \\ "pages" \\ "page" \\ "@title").text
+    val text:String = (xml \\ "api" \\ "query" \\ "pages" \\ "page" \\ "revisions" \\ "rev" ).text
+    getOutputFileFromFileData(text, title)
+
+  }
+
 
   def getOutputFileFromXmlFile(file: File) = {
     val xml = XML.loadFile(file.getAbsolutePath)
@@ -94,15 +107,24 @@ object PresidentContentExtractor {
     }
 
     val result = article.content.flatMap(extractor)
-    val (contentRaw, sectionItems) = sectionContent(result.map(x=>fixQuotation(x.toString)):_*)
+    val fixedLines = result.map(x=>fixQuotation(x.toString))
+    val trimmedLines = fixedLines.flatMap(x=> x.trim match{
+      case ""=> None
+      case other => Some(other)
+    })
+    val (contentRaw, sectionItems) = sectionContent(trimmedLines:_*)
 
     val sections = sectionItems.map(x=>{
       val ending =if(contentRaw.length<300)"" else "..."
       val sectionContent = contentRaw.split("\n").slice(x.start,x.stop).mkString("\n").trim()
+      val bounds = (x.start,x.stop) match {
+        case (a,b) if a==b => s"$a"
+        case (a,b) => s"${a}-${b}"
+      }
       val description = s"${sectionContent.take(300)}$ending"
       (
         ("title" -> s"$title: ${x.title}") ~
-          ("bounds" -> s"${x.start}-${x.stop}") ~
+          ("bounds" -> bounds) ~
           ("type" -> "section") ~
           ("description" -> description)
         )
@@ -120,6 +142,7 @@ object PresidentContentExtractor {
         ("documentVersion" -> "v1.0") ~
         ("schemaVersion" -> "0.0.3") ~
         ("source"-> "Data ingested automatically from Wikipedia on September 09, 2016\n© 2005 - 2016 Wikimedia commons.") ~
+        ("description"-> "Data ingested automatically from Wikipedia on September 09, 2016\n© 2005 - 2016 Wikimedia commons.") ~
         ("topics" -> getTopics(title))
 
 

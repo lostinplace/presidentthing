@@ -93,7 +93,9 @@ object WikiParser {
 
   val xmlComment = ("<!--" ~ SNI("-->") ~ "-->")
 
-  val XML = (Xml.Xml.Element | Xml.Xml.EntityRef | Xml.Xml.Comment | xmlComment | Xml.Xml.ETag ) .map(WikiXML(_))
+  val terribleXmlLink = P("<http" ~ SNI(">") ~ ">")
+
+  val XML = (Xml.Xml.Element | Xml.Xml.EntityRef | Xml.Xml.Comment | xmlComment | Xml.Xml.ETag | terribleXmlLink ) .map(WikiXML(_))
 
   val simpleBold = P(BOLD_QUOTES ~ easyWord ~ BOLD_QUOTES).map(Bold(_))
 
